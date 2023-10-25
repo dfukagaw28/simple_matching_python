@@ -1,0 +1,10 @@
+[project]
+name = "simplematching"
+description = "Simple implementation of matching algorithms"
+version = "0.1"
+license = {file = "LICENSE"}
+dependencies = [
+    "click~=8.1",
+    "numpy~=1.26",
+    "pandas~=2.1",
+]
