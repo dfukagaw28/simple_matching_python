@@ -2,7 +2,7 @@ from io import StringIO
 
 import numpy as np
 
-from hospital_resident import HospitalResident as HR
+from simplematching.hospital_resident import HospitalResident as HR
 from matching.games import HospitalResident as HR2
 
 

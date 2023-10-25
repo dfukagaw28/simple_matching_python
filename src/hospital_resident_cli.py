@@ -5,7 +5,7 @@ import datetime
 import numpy as np
 import pandas as pd
 
-from .hospital_resident import HospitalResident as HR
+from simplematching.hospital_resident import HospitalResident as HR
 
 
 @click.group()

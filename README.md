@@ -22,7 +22,7 @@ pandas==2.1.1
 
 ```
 $ git clone https://github.com/dfukagaw28/simple_matching_python.git
-$ cd matching_python
+$ cd simple_matching_python
 ```
 
 ## Run
@@ -30,22 +30,22 @@ $ cd matching_python
 Generate a random instance
 
 ```
-$ python hospital_resident_cli.py generate 300 20
+$ python src/hospital_resident_cli.py generate 300 20
 ```
 
 Solve
 
 ```
-$ python hospital_resident_cli.py solve instances/HR_r300_h020_s05685763110016471008.txt
+$ python src/hospital_resident_cli.py solve instances/HR_r300_h020_s05685763110016471008.txt
 ```
 
 Simulation
 
 ```
-$ python hospital_resident_cli.py simulate 100 10 20 -v -r 1000
+$ python src/hospital_resident_cli.py simulate 100 10 20 -v -r 1000
 ```
 
-Usage: `python hospital_resident_cli.py simulate [OPTIONS] NUM_RESIDENTS NUM_HOSPITALS CAPACITY_MAX`
+Usage: `python src/hospital_resident_cli.py simulate [OPTIONS] NUM_RESIDENTS NUM_HOSPITALS CAPACITY_MAX`
 
 - `NUM_RESIDENTS`: The number of residents
 - `NUM_HOSPITALS`: The number of hospitals
