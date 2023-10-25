@@ -1,4 +1,4 @@
-# matching_python
+# simple_matching_python
 
 A simple implementation of Gale-Shapley algorithm (GA algorithm, a.k.a. deferred-acceptance algorithm; DA algorithm) for stable matching (hospital-resident) problem.
 
@@ -21,7 +21,7 @@ pandas==2.1.1
 ## Install
 
 ```
-$ git clone https://github.com/dfukagaw28/matching_python.git
+$ git clone https://github.com/dfukagaw28/simple_matching_python.git
 $ cd matching_python
 ```
 
