@@ -2,7 +2,7 @@
 
 A simple implementation of Gale-Shapley algorithm (GA algorithm, a.k.a. deferred-acceptance algorithm; DA algorithm) for stable matching (hospital-resident) problem.
 
-Tens times faster than [matching](https://github.com/daffidwilde/matching) package (see [`running_time.ipynb`](./running_time.ipynb) for details).
+Tens times faster than [matching](https://github.com/daffidwilde/matching) package (see [`running_time.ipynb`](./docs/running_time.ipynb) for details).
 
 ## Requirements
 
