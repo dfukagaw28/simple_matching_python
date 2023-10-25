@@ -62,5 +62,5 @@ $ pip install matching
 ```
 
 ```
-$ pytest tests/test_hospital_resident.py -vv
+$ pytest src/tests/test_hospital_resident.py -vv
 ```
