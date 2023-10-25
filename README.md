@@ -27,7 +27,7 @@ $ cd matching_python
 
 ## Run
 
-Generate an random instance
+Generate a random instance
 
 ```
 $ python hospital_resident_cli.py generate 300 20
