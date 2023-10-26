@@ -101,7 +101,7 @@ def simulate(num_residents, num_hospitals, capacity_max, repeat, seed, verbose, 
 
                 n_unmatches.append(n_unmatch)
 
-            mean = np.mean(n_unmatch)
+            mean = np.mean(n_unmatches)
 
             if verbose >= 1:
                 click.echo(f'R:{num_residents} H:{num_hospitals} C:{capacity} M:{resident_pref_max}  ->  U:{mean:.4f}')
