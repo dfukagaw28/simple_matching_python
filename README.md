@@ -49,9 +49,11 @@ Usage: `python src/hospital_resident_cli.py simulate [OPTIONS] NUM_RESIDENTS NUM
 ## Test
 
 ```
-$ pip install matching
+$ uv run pytest src/tests/test_hospital_resident.py -vv
 ```
 
+or, more simply,
+
 ```
-$ pytest src/tests/test_hospital_resident.py -vv
+$ uv run pytest -vv
 ```
