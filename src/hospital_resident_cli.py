@@ -1,7 +1,7 @@
+import datetime
 from pathlib import Path
 
 import click
-import datetime
 import numpy as np
 import pandas as pd
 

@@ -6,23 +6,14 @@ Tens times faster than [matching](https://github.com/daffidwilde/matching) packa
 
 ## Requirements
 
-```
-$ pip install click numpy pandas
-```
-
-Tested in the following environment:
-
-```
-click==8.1.7
-numpy==1.26.1
-pandas==2.1.1
-```
+We recommend using [`uv`](https://docs.astral.sh/uv/) for dependency management and project setup, but it is not required.
 
 ## Install
 
 ```
 $ git clone https://github.com/dfukagaw28/simple_matching_python.git
 $ cd simple_matching_python
+$ uv sync
 ```
 
 ## Run
@@ -30,19 +21,19 @@ $ cd simple_matching_python
 Generate a random instance
 
 ```
-$ python src/hospital_resident_cli.py generate 300 20
+$ uv run src/hospital_resident_cli.py generate 300 20
 ```
 
 Solve
 
 ```
-$ python src/hospital_resident_cli.py solve instances/HR_r300_h020_s05685763110016471008.txt
+$ uv run src/hospital_resident_cli.py solve instances/HR_r300_h020_s05685763110016471008.txt
 ```
 
 Simulation
 
 ```
-$ python src/hospital_resident_cli.py simulate 100 10 20 -v -r 1000
+$ uv run src/hospital_resident_cli.py simulate 100 10 20 -v -r 1000
 ```
 
 Usage: `python src/hospital_resident_cli.py simulate [OPTIONS] NUM_RESIDENTS NUM_HOSPITALS CAPACITY_MAX`
