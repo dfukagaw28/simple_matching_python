@@ -5,6 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
+from simplematching.pcg32 import Pcg32Rng, permutation
+
 
 def _insert(
         items: list[int],
@@ -50,19 +52,19 @@ class HospitalResident:
 
         # Initialize random number generator
         if seed is None:
-            seed = np.random.default_rng().integers(0, 1<<63)
+            seed = np.random.default_rng().integers(0, 1 << 30)
         self.seed = seed
-        rng = np.random.default_rng(seed)
+        rng = Pcg32Rng(seed)
 
         # Generate preference list (resident -> hospital)
         self.resident_prefs = [
-            np.argsort(rng.random(size=num_hospitals))
+            permutation(rng, num_hospitals)
             for _ in range(num_residents)
         ]
 
         # Generate preference list (hospital -> resident)
         self.hospital_prefs = [
-            np.argsort(rng.random(size=num_residents))
+            permutation(rng, num_residents)
             for _ in range(num_hospitals)
         ]
 

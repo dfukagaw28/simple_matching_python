@@ -13,27 +13,27 @@ def test_can_generate():
     assert hr.num_hospitals == 4
 
     prefs_expected = np.loadtxt(StringIO("""
-3 2 1 0
 2 3 1 0
+0 1 3 2
 3 1 2 0
-3 2 1 0
-1 0 2 3
-0 2 3 1
-3 1 0 2
-3 2 0 1
-0 2 3 1
-3 0 1 2
-3 1 0 2
+1 2 3 0
+2 0 1 3
+1 2 3 0
+0 3 2 1
+2 3 0 1
+2 1 0 3
+2 0 1 3
 1 2 0 3
+3 0 1 2
 """))
     #assert np.array_equal(np.array(hr.resident_prefs), prefs_expected)
     assert np.array(hr.resident_prefs).tolist() == prefs_expected.tolist()
 
     prefs_expected = np.loadtxt(StringIO("""
-11 4 1 8 2 9 5 0 7 3 10 6
-9 2 7 4 1 0 8 5 10 6 3 11
-10 8 1 5 7 4 0 11 6 3 2 9
-2 0 3 11 7 1 5 6 8 10 4 9
+2 6 0 5 10 9 7 8 11 4 3 1
+2 11 10 9 7 1 0 5 3 4 8 6
+3 10 9 2 6 0 4 11 1 7 5 8
+1 0 5 9 7 2 11 8 6 4 10 3
 """))
     #assert np.array_equal(np.array(hr.hospital_prefs), prefs_expected)
     assert np.array(hr.hospital_prefs).tolist() == prefs_expected.tolist()
@@ -45,8 +45,8 @@ def test_can_solve():
     hr = HR.generate(12, 4, 12345678)
     m_residents, m_hospitals = hr.solve()
 
-    assert m_residents == [3, 2, 3, 3, 1, 0, 1, 2, 0, 0, 1, 2]
-    assert m_hospitals == [[8, 9, 5], [4, 10, 6], [1, 7, 11], [2, 0, 3]]
+    assert m_residents == [2, 0, 3, 1, 2, 1, 0, 3, 0, 2, 1, 3]
+    assert m_hospitals == [[6, 8, 1], [10, 5, 3], [9, 0, 4], [7, 2, 11]]
 
 
 def test_same_result_1():
