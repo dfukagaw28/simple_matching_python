@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from simplematching.pcg32 import Pcg32Rng, permutation
+from simplematching.pcg32 import Pcg32Rng, permutations
 
 
 def _insert(
@@ -57,16 +57,10 @@ class HospitalResident:
         rng = Pcg32Rng(seed)
 
         # Generate preference list (resident -> hospital)
-        self.resident_prefs = [
-            permutation(rng, num_hospitals)
-            for _ in range(num_residents)
-        ]
+        self.resident_prefs = permutations(rng, num_residents, num_hospitals)
 
         # Generate preference list (hospital -> resident)
-        self.hospital_prefs = [
-            permutation(rng, num_residents)
-            for _ in range(num_hospitals)
-        ]
+        self.hospital_prefs = permutations(rng, num_hospitals, num_residents)
 
         # Set capacities for each hospital
         self.set_capacities()
