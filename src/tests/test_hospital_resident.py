@@ -63,6 +63,37 @@ def test_same_result_1():
         assert m1 == m2
 
 
+def test_set_capacities_uniform():
+    hr = HR.generate(12, 4, 12345678)
+
+    hr.set_capacities(5)
+    assert hr.capacities == [5, 5, 5, 5]
+
+    hr.set_capacities()
+    assert hr.capacities == [3, 3, 3, 3]
+
+
+def test_set_capacities_non_uniform():
+    hr = HR.generate(12, 4, 12345678)
+
+    hr.set_capacities([5, 2, 8, 1])
+    assert hr.capacities == [5, 2, 8, 1]
+
+    m_residents, m_hospitals = hr.solve()
+    for h in range(hr.num_hospitals):
+        assert len(m_hospitals[h]) <= hr.capacities[h]
+
+
+def test_set_capacities_non_uniform_wrong_length():
+    hr = HR.generate(12, 4, 12345678)
+
+    try:
+        hr.set_capacities([1, 2, 3])
+        assert False, 'AssertionError expected'
+    except AssertionError:
+        pass
+
+
 def test_same_result_2():
     for _ in range(1000):
         hr = HR.generate(60, 4)

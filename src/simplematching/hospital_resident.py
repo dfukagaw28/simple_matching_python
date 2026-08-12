@@ -65,8 +65,21 @@ class HospitalResident:
         # Set capacities for each hospital
         self.set_capacities()
 
-    def set_capacities(self, capacities: int = -1):
-        """Set the capacities for each hospital"""
+    def set_capacities(self, capacities: int | list[int] = -1):
+        """Set the capacities for each hospital.
+
+        Pass a single int to give every hospital the same capacity
+        (a negative value falls back to the default, evenly-divided
+        capacity), or a list of length `num_hospitals` to give each
+        hospital its own capacity.
+        """
+
+        if isinstance(capacities, list):
+            assert len(capacities) == self.num_hospitals, (
+                f'Expected {self.num_hospitals} capacities, got {len(capacities)}'
+            )
+            self.capacities = list(capacities)
+            return
 
         if capacities < 0:
             capacities = 1 + (self.num_residents - 1) // self.num_hospitals
