@@ -1,6 +1,7 @@
 from io import StringIO
 
 import numpy as np
+import pytest
 
 from simplematching.hospital_resident import HospitalResident as HR
 from matching.games import HospitalResident as HR2
@@ -87,11 +88,8 @@ def test_set_capacities_non_uniform():
 def test_set_capacities_non_uniform_wrong_length():
     hr = HR.generate(12, 4, 12345678)
 
-    try:
+    with pytest.raises(AssertionError, match='Expected 4 capacities, got 3'):
         hr.set_capacities([1, 2, 3])
-        assert False, 'AssertionError expected'
-    except AssertionError:
-        pass
 
 
 def test_same_result_2():
