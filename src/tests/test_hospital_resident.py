@@ -92,6 +92,111 @@ def test_set_capacities_non_uniform_wrong_length():
         hr.set_capacities([1, 2, 3])
 
 
+def test_cut_prefs_without_tie_last():
+    hr = HR.generate(12, 4, 12345678)
+    hr.cut_resident_prefences(1)
+
+    assert hr.tie_last is False
+    assert hr.resident_prefs[0] == [2]
+    assert hr.resident_prefs_completed() == hr.resident_prefs
+
+    # Every resident applies to a single hospital, hence the residents
+    # rejected by it are left unmatched
+    m_residents, _ = hr.solve()
+    assert m_residents.count(-1) > 0
+    assert hr.count_unlisted_matches(m_residents) == 0
+
+
+def test_cut_prefs_with_tie_last_keep():
+    hr = HR.generate(12, 4, 12345678)
+    prefs_full = [list(prefs) for prefs in hr.resident_prefs]
+    m_expected, _ = hr.solve()
+
+    hr.cut_resident_prefences(1, tie_last=True, tie_break='keep')
+
+    assert hr.tie_last is True
+    assert hr.resident_prefs[0] == [2]
+    assert hr.resident_prefs_rest[0] == [3, 1, 0]
+
+    # Breaking the tie by the original order leaves the preference lists
+    # (and hence the matching) unchanged
+    assert hr.resident_prefs_completed() == prefs_full
+    m_residents, _ = hr.solve()
+    assert m_residents == m_expected
+
+
+def test_cut_prefs_with_tie_last_random():
+    hr = HR.generate(12, 4, 12345678)
+    hr.cut_resident_prefences(1, tie_last=True, seed=98765)
+
+    for r in range(hr.num_residents):
+        # The hospitals out of the list follow the listed one, each of them
+        # exactly once
+        completed = hr.resident_prefs_completed()[r]
+        assert completed[:1] == hr.resident_prefs[r]
+        assert sorted(completed) == list(range(hr.num_hospitals))
+
+    # Every hospital is acceptable, hence every resident is matched
+    # (the total capacity is large enough)
+    m_residents, _ = hr.solve()
+    assert m_residents.count(-1) == 0
+    assert hr.count_unlisted_matches(m_residents) > 0
+
+
+def test_cut_prefs_with_tie_last_is_reproducible():
+    m1 = []
+    for _ in range(2):
+        hr = HR.generate(60, 4, 12345678)
+        hr.cut_resident_prefences(2, tie_last=True, seed=42)
+        m1.append(hr.solve()[0])
+    assert m1[0] == m1[1]
+
+
+def test_set_tie_last_on_incomplete_instance():
+    hr = HR.generate(12, 4, 12345678)
+    hr.cut_resident_prefences(2)
+    hr.set_tie_last(tie_break='keep')
+
+    assert hr.resident_prefs[0] == [2, 3]
+    assert hr.resident_prefs_rest[0] == [0, 1]
+
+    hr.set_tie_last(False)
+    assert hr.tie_last is False
+    assert hr.resident_prefs_completed() == hr.resident_prefs
+
+
+def test_tie_last_leaves_residents_unmatched_when_capacity_is_short():
+    # A resident is unmatched only if every hospital has rejected them, and a
+    # hospital that has rejected someone is full and stays full.  Hence the
+    # number of unmatched residents is exactly the number of residents that
+    # the hospitals cannot hold, whatever the preference lists are.
+    for capacity in range(1, 4):
+        for _ in range(20):
+            hr = HR.generate(12, 4)
+            hr.set_capacities(capacity)
+            hr.cut_resident_prefences(1, tie_last=True)
+
+            m_residents, m_hospitals = hr.solve()
+            assert m_residents.count(-1) == 12 - 4 * capacity
+            for h in range(hr.num_hospitals):
+                assert len(m_hospitals[h]) == capacity
+
+
+def test_same_result_tie_last():
+    for _ in range(200):
+        hr = HR.generate(60, 4)
+        hr.cut_resident_prefences(2, tie_last=True)
+
+        m1, _ = hr.solve()
+
+        game = HR2.create_from_dictionaries(*hr.to_dicts())
+        game.solve()
+
+        m2 = [r.matching.name if r.matching else -1 for r in game.residents]
+
+        assert m1 == m2
+
+
 def test_same_result_2():
     for _ in range(1000):
         hr = HR.generate(60, 4)

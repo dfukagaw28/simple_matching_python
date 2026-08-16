@@ -1,4 +1,4 @@
-from collections import deque
+from collections import defaultdict, deque
 from datetime import datetime
 import io
 from pathlib import Path
@@ -37,7 +37,14 @@ def _read_noncomment_line(file: io.IOBase) -> None:
 class HospitalResident:
     def __init__(self):
         """Constructor"""
-        pass
+
+        # Whether the hospitals out of a resident's preference list are
+        # acceptable (and tied at the last rank) or not.
+        self.tie_last = False
+
+        # Tie-broken order of the hospitals out of the preference list,
+        # for each resident (used only when tie_last is True).
+        self.resident_prefs_rest = None
 
     def init_random(self,
                     num_residents: int,
@@ -62,6 +69,11 @@ class HospitalResident:
         # Generate preference list (hospital -> resident)
         self.hospital_prefs = permutations(rng, num_hospitals, num_residents)
 
+        # Keep the generator so that the random numbers consumed later
+        # (e.g. by cut_resident_prefences) do not overlap with the ones
+        # already used for the preference lists
+        self.rng = rng
+
         # Set capacities for each hospital
         self.set_capacities()
 
@@ -85,11 +97,136 @@ class HospitalResident:
             capacities = 1 + (self.num_residents - 1) // self.num_hospitals
         self.capacities = [capacities] * self.num_hospitals
 
-    def cut_resident_prefences(self, k: int):
-        """Extract the top k preferences for each resident"""
+    def cut_resident_prefences(
+            self,
+            k: int,
+            tie_last: bool = False,
+            tie_break: str = 'random',
+            seed: int | None = None,
+    ):
+        """Extract the top k preferences for each resident.
+
+        By default the hospitals removed from a list are unacceptable:
+        a resident rejected by all the k hospitals is left unmatched.
+
+        With `tie_last=True` the removed hospitals are, instead, acceptable
+        and tied at the last rank.  A tie has to be broken to run the
+        (resident-oriented) Gale-Shapley algorithm; `tie_break` chooses how:
+          'random': shuffle the removed hospitals at random (default)
+          'keep':   keep the order they have in the current list, i.e. the
+                    resident-oriented Gale-Shapley algorithm behaves exactly
+                    as if the preference lists were not cut at all
+        `seed` seeds the shuffle; when it is None the generator of the
+        instance is used (or a random one, for a loaded instance).
+        """
+
+        rests = [prefs[k:] for prefs in self.resident_prefs]
 
         for r in range(self.num_residents):
             self.resident_prefs[r] = self.resident_prefs[r][:k]
+
+        if tie_last:
+            self._set_prefs_rest(rests, tie_break, seed)
+        else:
+            self.tie_last = False
+            self.resident_prefs_rest = None
+
+    def set_tie_last(
+            self,
+            tie_last: bool = True,
+            tie_break: str = 'random',
+            seed: int | None = None,
+    ):
+        """Treat every hospital out of a resident's preference list as
+        acceptable and tied at the last rank.
+
+        This is the counterpart of `cut_resident_prefences(..., tie_last=True)`
+        for an instance whose preference lists are already incomplete
+        (e.g. loaded from a file).  See `cut_resident_prefences` for
+        `tie_break` and `seed`; here 'keep' means the ascending order of the
+        hospital numbers.
+        """
+
+        if not tie_last:
+            self.tie_last = False
+            self.resident_prefs_rest = None
+            return
+
+        rests = []
+        for prefs in self.resident_prefs:
+            listed = set(prefs)
+            rests.append([h for h in range(self.num_hospitals) if h not in listed])
+
+        self._set_prefs_rest(rests, tie_break, seed)
+
+    def _set_prefs_rest(self, rests: list[list[int]], tie_break: str, seed: int | None):
+        """Store the tie-broken order of the hospitals out of the lists."""
+
+        assert tie_break in ('random', 'keep'), f'Unknown tie_break: {tie_break}'
+
+        if tie_break == 'random':
+            rests = self._shuffle_lists(rests, seed)
+
+        self.resident_prefs_rest = rests
+        self.tie_last = True
+
+    def _shuffle_lists(self, lists: list[list[int]], seed: int | None) -> list[list[int]]:
+        """Shuffle each list at random (lists of the same length at once)."""
+
+        rng = self._get_rng(seed)
+
+        # Group the lists by their lengths, since `permutations` generates
+        # permutations of a single length at a time
+        groups = defaultdict(list)
+        for i, items in enumerate(lists):
+            groups[len(items)].append(i)
+
+        shuffled = [None] * len(lists)
+        for n, indices in sorted(groups.items()):
+            for i, perm in zip(indices, permutations(rng, len(indices), n)):
+                shuffled[i] = [lists[i][j] for j in perm]
+
+        return shuffled
+
+    def _get_rng(self, seed: int | None = None) -> Pcg32Rng:
+        """Get a random number generator.
+
+        A seed, if given, makes a new generator.  Otherwise the generator of
+        the instance is reused (and made, at random, if it does not exist).
+        """
+
+        if seed is not None:
+            return Pcg32Rng(seed)
+
+        rng = getattr(self, 'rng', None)
+        if rng is None:
+            rng = Pcg32Rng(int(np.random.default_rng().integers(0, 1 << 30)))
+            self.rng = rng
+        return rng
+
+    def resident_prefs_completed(self) -> list[list[int]]:
+        """Preference list (resident -> hospital) that the algorithm follows.
+
+        It is the preference list itself unless the hospitals out of the list
+        are tied at the last rank; in that case they follow the listed ones.
+        """
+
+        if not self.tie_last:
+            return self.resident_prefs
+
+        return [
+            prefs + rest
+            for prefs, rest in zip(self.resident_prefs, self.resident_prefs_rest)
+        ]
+
+    def count_unlisted_matches(self, m_residents: list[int]) -> int:
+        """Count the residents matched to a hospital out of their list."""
+
+        return sum(
+            1
+            for r, h in enumerate(m_residents)
+            if h >= 0 and h not in self.resident_prefs[r]
+        )
 
     @staticmethod
     def generate(num_residents: int, num_hospitals: int, seed: int | None = None):
@@ -104,15 +241,25 @@ class HospitalResident:
 
         print('Residents:', self.num_residents)
         print('Hospitals:', self.num_hospitals)
-        
+
         for r in range(self.num_residents):
-            print(f'{r}:', self.resident_prefs[r])
+            if self.tie_last:
+                print(f'{r}:', self.resident_prefs[r],
+                      '(', *self.resident_prefs_rest[r], ')')
+            else:
+                print(f'{r}:', self.resident_prefs[r])
 
         for h in range(self.num_hospitals):
             print(f'{h}:', self.hospital_prefs[h])
 
     def save(self, path: Path) -> None:
-        """Save the instance to a file."""
+        """Save the instance to a file.
+
+        The preference lists are saved as they are, i.e. an incomplete list
+        is saved incomplete.  Note that neither the tie_last flag nor the
+        tie-broken order of the hospitals out of the lists is saved;
+        call `set_tie_last()` again after loading.
+        """
 
         # Make sure that the parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,7 +285,12 @@ class HospitalResident:
 
     @staticmethod
     def load(path: Path) -> None:
-        """Load an instance from a file."""
+        """Load an instance from a file.
+
+        A preference list of a resident may be incomplete, in which case the
+        hospitals out of the list are unacceptable; call `set_tie_last()` to
+        make them acceptable and tied at the last rank instead.
+        """
 
         # New instance (which is empty)
         instance = HospitalResident()
@@ -178,7 +330,7 @@ class HospitalResident:
         # Parametes
         num_residents = self.num_residents
         num_hospitals = self.num_hospitals
-        resident_prefs = self.resident_prefs
+        resident_prefs = self.resident_prefs_completed()
         hospital_prefs = self.hospital_prefs
 
         # Ranks of residents, for each hospital
@@ -224,7 +376,7 @@ class HospitalResident:
         """Transform the instance to that of https://pypi.org/project/matching/ """
 
         return [
-            dict(enumerate(self.resident_prefs)),
+            dict(enumerate(self.resident_prefs_completed())),
             dict(enumerate(self.hospital_prefs)),
             dict(enumerate(self.capacities)),
         ]
