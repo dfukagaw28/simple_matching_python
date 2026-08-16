@@ -9,7 +9,7 @@ from matching.games import HospitalResident as HR2
 # The seeds of the instances that the randomized tests below run on.
 # They are fixed so that a failure can be reproduced and located; widen the
 # range to test more instances.
-SEEDS = list(range(100))
+SEEDS = list(range(1000))
 
 
 def test_can_generate():
