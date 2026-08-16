@@ -6,10 +6,25 @@ import pytest
 from simplematching.hospital_resident import HospitalResident as HR
 from matching.games import HospitalResident as HR2
 
-# The seeds of the instances that the randomized tests below run on.
-# They are fixed so that a failure can be reproduced and located; widen the
-# range to test more instances.
-SEEDS = list(range(1000))
+# The seeds of the instances that the randomized tests below run on.  They are
+# fixed so that a failure can be reproduced and located, and grouped into
+# batches so that a run reports one case per batch instead of one per seed.
+# Widen NUM_SEEDS to test more instances.
+NUM_SEEDS = 1000
+BATCH_SIZE = 100
+
+SEED_BATCHES = [
+    range(start, min(start + BATCH_SIZE, NUM_SEEDS))
+    for start in range(0, NUM_SEEDS, BATCH_SIZE)
+]
+
+
+def _batch_id(seeds: range) -> str:
+    """Name a batch of seeds after the seeds it holds, e.g. 'seeds0-99'."""
+    return f'seeds{seeds.start}-{seeds.stop - 1}'
+
+
+seed_batches = pytest.mark.parametrize('seeds', SEED_BATCHES, ids=_batch_id)
 
 
 def test_can_generate():
@@ -55,18 +70,19 @@ def test_can_solve():
     assert m_hospitals == [[6, 8, 1], [10, 5, 3], [9, 0, 4], [7, 2, 11]]
 
 
-@pytest.mark.parametrize('seed', SEEDS)
-def test_same_result_1(seed):
-    hr = HR.generate(60, 4, seed)
+@seed_batches
+def test_same_result_1(seeds):
+    for seed in seeds:
+        hr = HR.generate(60, 4, seed)
 
-    m1, _ = hr.solve()
+        m1, _ = hr.solve()
 
-    game = HR2.create_from_dictionaries(*hr.to_dicts())
-    game.solve()
+        game = HR2.create_from_dictionaries(*hr.to_dicts())
+        game.solve()
 
-    m2 = [r.matching.name for r in game.residents]
+        m2 = [r.matching.name for r in game.residents]
 
-    assert m1 == m2
+        assert m1 == m2, f'seed={seed}'
 
 
 def test_set_capacities_uniform():
@@ -171,47 +187,50 @@ def test_set_tie_last_on_incomplete_instance():
 
 
 @pytest.mark.parametrize('capacity', range(1, 4))
-@pytest.mark.parametrize('seed', SEEDS)
-def test_tie_last_leaves_residents_unmatched_when_capacity_is_short(seed, capacity):
+@seed_batches
+def test_tie_last_leaves_residents_unmatched_when_capacity_is_short(seeds, capacity):
     # A resident is unmatched only if every hospital has rejected them, and a
     # hospital that has rejected someone is full and stays full.  Hence the
     # number of unmatched residents is exactly the number of residents that
     # the hospitals cannot hold, whatever the preference lists are.
-    hr = HR.generate(12, 4, seed)
-    hr.set_capacities(capacity)
-    hr.cut_resident_prefences(1, tie_last=True)
+    for seed in seeds:
+        hr = HR.generate(12, 4, seed)
+        hr.set_capacities(capacity)
+        hr.cut_resident_prefences(1, tie_last=True)
 
-    m_residents, m_hospitals = hr.solve()
-    assert m_residents.count(-1) == 12 - 4 * capacity
-    for h in range(hr.num_hospitals):
-        assert len(m_hospitals[h]) == capacity
-
-
-@pytest.mark.parametrize('seed', SEEDS)
-def test_same_result_tie_last(seed):
-    hr = HR.generate(60, 4, seed)
-    hr.cut_resident_prefences(2, tie_last=True)
-
-    m1, _ = hr.solve()
-
-    game = HR2.create_from_dictionaries(*hr.to_dicts())
-    game.solve()
-
-    m2 = [r.matching.name if r.matching else -1 for r in game.residents]
-
-    assert m1 == m2
+        m_residents, m_hospitals = hr.solve()
+        assert m_residents.count(-1) == 12 - 4 * capacity, f'seed={seed}'
+        for h in range(hr.num_hospitals):
+            assert len(m_hospitals[h]) == capacity, f'seed={seed}'
 
 
-@pytest.mark.parametrize('seed', SEEDS)
-def test_same_result_2(seed):
-    hr = HR.generate(60, 4, seed)
-    hr.set_capacities(10)
+@seed_batches
+def test_same_result_tie_last(seeds):
+    for seed in seeds:
+        hr = HR.generate(60, 4, seed)
+        hr.cut_resident_prefences(2, tie_last=True)
 
-    m1, _ = hr.solve()
+        m1, _ = hr.solve()
 
-    game = HR2.create_from_dictionaries(*hr.to_dicts())
-    game.solve()
+        game = HR2.create_from_dictionaries(*hr.to_dicts())
+        game.solve()
 
-    m2 = [r.matching.name if r.matching else -1 for r in game.residents]
+        m2 = [r.matching.name if r.matching else -1 for r in game.residents]
 
-    assert m1 == m2
+        assert m1 == m2, f'seed={seed}'
+
+
+@seed_batches
+def test_same_result_2(seeds):
+    for seed in seeds:
+        hr = HR.generate(60, 4, seed)
+        hr.set_capacities(10)
+
+        m1, _ = hr.solve()
+
+        game = HR2.create_from_dictionaries(*hr.to_dicts())
+        game.solve()
+
+        m2 = [r.matching.name if r.matching else -1 for r in game.residents]
+
+        assert m1 == m2, f'seed={seed}'
