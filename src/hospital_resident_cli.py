@@ -51,9 +51,18 @@ def solve(path: Path):
 @click.option('-r', '--repeat', default=10, type=int)
 @click.option('-s', '--seed', default=-1, type=int)
 @click.option('-v', '--verbose', count=True)
+@click.option('--tie-last', is_flag=True,
+              help='Treat the hospitals out of a preference list as'
+                   ' acceptable and tied at the last rank.')
 @click.option('--outdir', default='./sim_results', type=click.Path())
-def simulate(num_residents, num_hospitals, capacity_max, repeat, seed, verbose, outdir):
-    """Run a simulation."""
+def simulate(num_residents, num_hospitals, capacity_max, repeat, seed, verbose, tie_last, outdir):
+    """Run a simulation.
+
+    The value recorded for each case is the mean number of residents that
+    are not matched to a hospital of their (cut) preference list.  Without
+    `--tie-last` such a resident is left unmatched; with `--tie-last` they
+    may be matched to a hospital out of their list instead.
+    """
 
     # Seed generator
     if seed < 0:
@@ -88,13 +97,15 @@ def simulate(num_residents, num_hospitals, capacity_max, repeat, seed, verbose, 
                 hr.set_capacities(capacity)
 
                 # Extract the top `resident_pref_max` preferences
-                hr.cut_resident_prefences(resident_pref_max)
+                hr.cut_resident_prefences(resident_pref_max, tie_last=tie_last)
 
                 # Solve
                 m_residents, m_hospitals = hr.solve()
 
-                # Count the number of unmatched residents
-                n_unmatch = m_residents.count(-1)
+                # Count the number of residents that are not matched to a
+                # hospital of their list (unmatched, or matched to one of
+                # the hospitals tied at the last rank)
+                n_unmatch = m_residents.count(-1) + hr.count_unlisted_matches(m_residents)
 
                 if verbose >= 2:
                     click.echo(f'R:{num_residents} H:{num_hospitals} C:{capacity} M:{resident_pref_max} S:{seed}  ->  U:{n_unmatch}')
