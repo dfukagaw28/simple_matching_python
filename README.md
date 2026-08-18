@@ -51,6 +51,26 @@ The value recorded for each case is the mean number of residents that are not ma
 By default the hospitals out of the list are unacceptable, so that such a resident is left unmatched.
 With `--tie-last` they are acceptable and tied at the last rank, so that such a resident may be matched to a hospital out of their list.
 
+## Biased preferences
+
+`HospitalResident.generate()` draws every preference list independently, so that no hospital is more wanted than another.
+`generate_biased_HR()` instead lets the residents agree with each other on how good the hospitals are, and the hospitals on how good the residents are.
+
+```python
+from simplematching.biased import generate_biased_HR
+
+hr = generate_biased_HR(300, 24, alpha_resident=0.5, alpha_hospital=0.5,
+                        list_length=8, seed=12345)
+m_residents, m_hospitals = hr.solve()
+```
+
+Every resident scores a hospital as an opinion that all the residents share plus an opinion of their own, and ranks the hospitals by that score.
+`alpha_resident` is how much of the score the shared opinion makes: it is the correlation of the scores of any two residents, from 0 (independent lists, as in `generate()`) to 1 (identical lists).
+`alpha_hospital` does the same for the lists of the hospitals.
+The residents rank their best `list_length` hospitals only (all of them if it is None), while the hospitals always rank every resident.
+
+The more the residents agree, the more of them miss out: with 300 residents, 24 hospitals of capacity 13 and lists of 8, the number of unmatched residents grows from 0.1 at `alpha_resident=0` to 14 at 0.25, 37 at 0.5 and 78 at 0.75, on average over the instances (a single instance varies widely around it).
+
 ## Incomplete preference lists
 
 A preference list of a resident may be incomplete, either because it is cut by `cut_resident_prefences(k)` or because the instance file gives a short list.
