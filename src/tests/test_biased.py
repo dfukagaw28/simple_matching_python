@@ -126,6 +126,24 @@ def test_the_instance_can_be_saved(tmp_path):
     assert f'# seed: {hr.seed}' in path.read_text()
 
 
+def test_the_unlisted_hospitals_are_unacceptable_by_default():
+    hr = generate_biased_HR(60, 8, list_length=3, seed=12345)
+
+    assert hr.tie_last is False
+    assert hr.resident_prefs_rest is None
+    assert hr.solve()[0].count(-1) > 0
+
+
+def test_the_unlisted_hospitals_can_be_tied_last_on_generation():
+    hr = generate_biased_HR(60, 8, list_length=3, tie_last=True, seed=12345)
+    expected = generate_biased_HR(60, 8, list_length=3, seed=12345)
+    expected.set_tie_last()
+
+    assert hr.tie_last is True
+    assert hr.resident_prefs_rest == expected.resident_prefs_rest
+    assert hr.solve()[0] == expected.solve()[0]
+
+
 def test_the_unlisted_hospitals_can_be_tied_last():
     hr = generate_biased_HR(60, 8, list_length=3, seed=12345)
 

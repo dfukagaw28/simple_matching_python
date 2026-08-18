@@ -55,6 +55,7 @@ def generate_biased_HR(
         alpha_resident: float = 0.5,
         alpha_hospital: float = 0.5,
         list_length: int | None = 8,
+        tie_last: bool = False,
         seed: int | None = None,
         rng: np.random.Generator | None = None,
 ) -> HospitalResident:
@@ -66,6 +67,10 @@ def generate_biased_HR(
     complete one (see `generate_correlated_preferences`).  The
     residents rank their best `list_length` hospitals only (all of them if it
     is None), while the hospitals always rank every resident.
+
+    The hospitals a resident leaves out are unacceptable to them, unless
+    `tie_last` makes them acceptable and tied at the last rank, in a random
+    order (call `set_tie_last` on the instance to choose the order yourself).
 
     The instance is generated from `seed`, a random one if none is given,
     unless a generator is passed as `rng`; the instance is then generated from
@@ -93,6 +98,10 @@ def generate_biased_HR(
     # Give the instance a generator of the kind it uses itself, so that the
     # hospitals out of a resident's list can be shuffled (see set_tie_last)
     hr.rng = Pcg32Rng(int(rng.integers(0, 1 << 30)))
+
+    # Tie the hospitals out of a resident's list at the last rank, if asked to
+    if tie_last:
+        hr.set_tie_last()
 
     # Set capacities for each hospital
     hr.set_capacities()

@@ -68,6 +68,7 @@ Every resident scores a hospital as an opinion that all the residents share plus
 `alpha_resident` is how much of the score the shared opinion makes: it is the correlation of the scores of any two residents, from 0 (independent lists, as in `generate()`) to 1 (identical lists).
 `alpha_hospital` does the same for the lists of the hospitals.
 The residents rank their best `list_length` hospitals only (all of them if it is None), while the hospitals always rank every resident.
+The hospitals a resident leaves out are unacceptable to them, unless `tie_last=True` makes them acceptable and tied at the last rank (see below).
 
 The more the residents agree, the more of them miss out: with 300 residents, 24 hospitals of capacity 13 and lists of 8, the number of unmatched residents grows from 0.1 at `alpha_resident=0` to 14 at 0.25, 37 at 0.5 and 78 at 0.75, on average over the instances (a single instance varies widely around it).
 
