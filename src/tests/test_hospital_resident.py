@@ -1,9 +1,12 @@
+import copy
+import random
 from io import StringIO
 
 import numpy as np
 import pytest
 
 from simplematching.hospital_resident import HospitalResident as HR
+from simplematching.utils import normalize
 from matching.games import HospitalResident as HR2
 
 # The seeds of the instances that the randomized tests below run on.  They are
@@ -25,6 +28,52 @@ def _batch_id(seeds: range) -> str:
 
 
 seed_batches = pytest.mark.parametrize('seeds', SEED_BATCHES, ids=_batch_id)
+
+
+def _inverse(order: list[int]) -> list[int]:
+    """Map each old number to the new one it is renumbered to."""
+    inverse = [0] * len(order)
+    for new, old in enumerate(order):
+        inverse[old] = new
+    return inverse
+
+
+def _relabel(hr: HR, rng: random.Random) -> HR:
+    """Renumber the residents and the hospitals at random.
+
+    The result is an instance isomorphic to the given one, which normalize()
+    has to turn back into the very same instance.
+    """
+    hr = copy.deepcopy(hr)
+
+    resident_order = rng.sample(range(hr.num_residents), hr.num_residents)
+    hospital_order = rng.sample(range(hr.num_hospitals), hr.num_hospitals)
+    new_resident = _inverse(resident_order)
+    new_hospital = _inverse(hospital_order)
+
+    hr.resident_prefs = [
+        [new_hospital[h] for h in hr.resident_prefs[r]] for r in resident_order
+    ]
+    if hr.tie_last:
+        hr.resident_prefs_rest = [
+            [new_hospital[h] for h in hr.resident_prefs_rest[r]]
+            for r in resident_order
+        ]
+    hr.hospital_prefs = [
+        [new_resident[r] for r in hr.hospital_prefs[h]] for h in hospital_order
+    ]
+    hr.capacities = [hr.capacities[h] for h in hospital_order]
+
+    return hr
+
+
+def _popularity_keys(prefs: list[list[int]], num_items: int) -> list[tuple]:
+    """(number of firsts, number of seconds, ...) for each item."""
+    counts = [[0] * num_items for _ in range(num_items)]
+    for pref in prefs:
+        for position, item in enumerate(pref):
+            counts[item][position] += 1
+    return [tuple(counts[item]) for item in range(num_items)]
 
 
 def test_can_generate():
@@ -202,6 +251,100 @@ def test_tie_last_leaves_residents_unmatched_when_capacity_is_short(seeds, capac
         assert m_residents.count(-1) == 12 - 4 * capacity, f'seed={seed}'
         for h in range(hr.num_hospitals):
             assert len(m_hospitals[h]) == capacity, f'seed={seed}'
+
+
+def test_normalize_orders_by_popularity():
+    hr = HR.generate(12, 4, 12345678)
+    resident_order, hospital_order = normalize(hr)
+
+    assert hospital_order == [2, 1, 0, 3]
+    assert resident_order == [2, 1, 3, 10, 0, 6, 11, 9, 5, 7, 4, 8]
+
+    # The hospital ranked first by the most residents comes first, ties broken
+    # by the number of the second choices, then of the third ones, and so on
+    keys = _popularity_keys(hr.resident_prefs, hr.num_hospitals)
+    assert keys == sorted(keys, reverse=True)
+    assert [key[0] for key in keys] == [5, 3, 2, 2]
+
+    # ... and the same holds for the residents in the hospitals' lists
+    keys = _popularity_keys(hr.hospital_prefs, hr.num_residents)
+    assert keys == sorted(keys, reverse=True)
+    assert [key[0] for key in keys] == [2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+
+def test_normalize_is_idempotent():
+    hr = HR.generate(60, 8, 12345678)
+    normalize(hr)
+
+    prefs = copy.deepcopy((hr.resident_prefs, hr.hospital_prefs, hr.capacities))
+    resident_order, hospital_order = normalize(hr)
+
+    assert resident_order == list(range(hr.num_residents))
+    assert hospital_order == list(range(hr.num_hospitals))
+    assert (hr.resident_prefs, hr.hospital_prefs, hr.capacities) == prefs
+
+
+@seed_batches
+def test_normalize_keeps_the_matching(seeds):
+    for seed in seeds:
+        hr = HR.generate(40, 6, seed)
+        hr.set_capacities([5, 6, 7, 8, 9, 10])
+        m_residents, _ = hr.solve()
+
+        normalized = copy.deepcopy(hr)
+        resident_order, hospital_order = normalize(normalized)
+        new_resident = _inverse(resident_order)
+        new_hospital = _inverse(hospital_order)
+
+        # The instance is renumbered, not altered: the matching of the
+        # normalized instance is the matching of the original one, renumbered
+        m_normalized, _ = normalized.solve()
+        assert m_normalized == [
+            new_hospital[h] if h >= 0 else -1
+            for h in (m_residents[r] for r in resident_order)
+        ], f'seed={seed}'
+
+        # The capacity follows its hospital
+        assert normalized.capacities == [hr.capacities[h] for h in hospital_order], \
+            f'seed={seed}'
+
+
+@seed_batches
+def test_normalize_gives_isomorphic_instances_the_same_form(seeds):
+    for seed in seeds:
+        hr = HR.generate(40, 6, seed)
+        normalize(hr)
+
+        relabelled = _relabel(hr, random.Random(seed))
+        normalize(relabelled)
+
+        assert relabelled.resident_prefs == hr.resident_prefs, f'seed={seed}'
+        assert relabelled.hospital_prefs == hr.hospital_prefs, f'seed={seed}'
+
+
+@seed_batches
+def test_normalize_with_tie_last(seeds):
+    for seed in seeds:
+        hr = HR.generate(40, 6, seed)
+        hr.cut_resident_prefences(2, tie_last=True, seed=seed)
+        m_residents, _ = hr.solve()
+
+        normalized = copy.deepcopy(hr)
+        resident_order, hospital_order = normalize(normalized)
+        new_hospital = _inverse(hospital_order)
+
+        # The hospitals tied at the last rank are renumbered as well, and the
+        # residents keep being matched to the very same hospitals
+        m_normalized, _ = normalized.solve()
+        assert m_normalized == [
+            new_hospital[h] if h >= 0 else -1
+            for h in (m_residents[r] for r in resident_order)
+        ], f'seed={seed}'
+        assert all(
+            sorted(prefs + rest) == list(range(hr.num_hospitals))
+            for prefs, rest
+            in zip(normalized.resident_prefs, normalized.resident_prefs_rest)
+        ), f'seed={seed}'
 
 
 @seed_batches
