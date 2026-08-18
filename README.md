@@ -85,6 +85,22 @@ The quantity of interest is therefore the number of residents matched out of the
 Note that the resident-oriented Gale-Shapley algorithm only requires *weak* stability here, so any tie-breaking gives a stable matching.
 For a randomly generated instance the two tie-breaking rules even give the same distribution of matchings, since the tail of a random permutation is itself a random order.
 
+## Normalizing an instance
+
+`normalize()` renumbers the residents and the hospitals of an instance by popularity, in place, which makes an instance easier to read.
+
+```python
+from simplematching.hospital_resident import HospitalResident
+from simplematching.utils import normalize
+
+hr = HospitalResident.generate(300, 24, seed=12345)
+resident_order, hospital_order = normalize(hr)
+```
+
+The hospital that the most residents rank first becomes the hospital 0, and the resident that the most hospitals rank first becomes the resident 0; ties are broken by the number of the second choices, then of the third ones, and so on (see the docstrings for the details).
+The instance is only renumbered, never altered: solving it gives the same matching, up to the renumbering.
+The returned orders hold the old numbers in their new order, so `resident_order[i]` is the resident that becomes the resident `i`.
+
 ## Test
 
 ```
