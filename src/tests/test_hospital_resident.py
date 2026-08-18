@@ -162,6 +162,68 @@ def test_set_capacities_non_uniform_wrong_length():
         hr.set_capacities([1, 2, 3])
 
 
+def test_set_capacities_tight():
+    hr = HR.generate(300, 24, 12345678)
+
+    hr.set_capacities(tight=True)
+
+    # The hospitals hold exactly the 300 residents, 12 of them holding one
+    # more than the 300 // 24 the others hold
+    assert len(hr.capacities) == 24
+    assert sum(hr.capacities) == 300
+    assert sorted(set(hr.capacities)) == [12, 13]
+    assert hr.capacities.count(13) == 300 % 24
+
+    # Everyone is matched, the lists being complete and the seats enough
+    m_residents, m_hospitals = hr.solve()
+    assert m_residents.count(-1) == 0
+    for h in range(hr.num_hospitals):
+        assert len(m_hospitals[h]) == hr.capacities[h]
+
+
+def test_set_capacities_tight_when_it_divides_evenly():
+    hr = HR.generate(300, 25, 12345678)
+
+    hr.set_capacities(tight=True)
+
+    assert hr.capacities == [12] * 25
+
+
+def test_set_capacities_tight_with_fewer_residents_than_hospitals():
+    hr = HR.generate(10, 24, 12345678)
+
+    hr.set_capacities(tight=True)
+
+    assert sum(hr.capacities) == 10
+    assert sorted(set(hr.capacities)) == [0, 1]
+
+    m_residents, m_hospitals = hr.solve()
+    assert m_residents.count(-1) == 0
+    for h in range(hr.num_hospitals):
+        assert len(m_hospitals[h]) <= hr.capacities[h]
+
+
+def test_set_capacities_tight_gives_the_spare_seats_to_the_popular_hospitals():
+    hr = HR.generate(300, 24, 12345678)
+
+    hr.set_capacities(tight=True)
+
+    # Every hospital that got a spare seat is at least as popular as every
+    # hospital that did not
+    keys = _popularity_keys(hr.resident_prefs, hr.num_hospitals)
+    spared = [keys[h] for h in range(24) if hr.capacities[h] == 13]
+    others = [keys[h] for h in range(24) if hr.capacities[h] == 12]
+    assert min(spared) >= max(others)
+
+
+def test_set_capacities_tight_rejects_a_capacity_of_its_own():
+    hr = HR.generate(12, 4, 12345678)
+
+    for capacities in (5, [5, 2, 8, 1]):
+        with pytest.raises(AssertionError, match="Cannot specify both"):
+            hr.set_capacities(capacities, tight=True)
+
+
 def test_cut_prefs_without_tie_last():
     hr = HR.generate(12, 4, 12345678)
     hr.cut_resident_prefences(1)

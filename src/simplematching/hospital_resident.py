@@ -77,14 +77,47 @@ class HospitalResident:
         # Set capacities for each hospital
         self.set_capacities()
 
-    def set_capacities(self, capacities: int | list[int] = -1):
+    def set_capacities(
+            self,
+            capacities: int | list[int] = -1,
+            tight: bool = False,
+    ):
         """Set the capacities for each hospital.
 
         Pass a single int to give every hospital the same capacity
         (a negative value falls back to the default, evenly-divided
         capacity), or a list of length `num_hospitals` to give each
         hospital its own capacity.
+
+        The default capacity rounds up, so that the hospitals hold a few more
+        residents than there are.  Pass `tight` instead (and no capacity of
+        your own) to have them hold exactly `num_residents` residents: every
+        hospital gets `num_residents // num_hospitals` seats, and the seats
+        left over go, one each, to the hospitals that the most residents rank
+        first (then second, and so on; see `_popularity_keys`), ties broken at
+        random.  The lists the popularity is counted in are the submitted
+        ones, so a hospital no resident lists gets a spare seat by luck only.
         """
+
+        if tight:
+            from simplematching.utils import _popularity_keys
+
+            assert capacities == -1, "Cannot specify both 'capacities' and 'tight'"
+
+            capacities = self.num_residents // self.num_hospitals
+            if self.num_residents != self.num_hospitals * capacities:
+                hospital_keys = _popularity_keys(self.resident_prefs, self.num_hospitals)
+                random_keys = self._get_rng().next_uint32_bulk(self.num_hospitals)
+                sorted_hospitals = sorted(range(self.num_hospitals), key=lambda h: (hospital_keys[h], random_keys[h]))
+
+                capacities = [capacities] * self.num_hospitals
+                for i in range(self.num_residents % self.num_hospitals):
+                    capacities[sorted_hospitals[i]] += 1
+                assert self.num_residents == sum(capacities)
+            else:
+                capacities = [capacities] * self.num_hospitals
+            self.capacities = capacities
+            return
 
         if isinstance(capacities, list):
             assert len(capacities) == self.num_hospitals, (
